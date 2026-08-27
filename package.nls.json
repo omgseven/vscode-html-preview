@@ -1,0 +1,5 @@
+{
+    "html-preview.displayName": "HTML Preview",
+    "html-preview.description": "Preview local HTML files in VS Code",
+    "html-preview.openPreview.title": "Open Preview"
+}
