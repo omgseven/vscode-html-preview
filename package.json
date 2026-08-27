@@ -1,0 +1,49 @@
+{
+    "name": "html-preview",
+    "displayName": "%html-preview.displayName%",
+    "description": "%html-preview.description%",
+    "version": "0.0.1",
+    "publisher": "sevenid",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/omgseven/vscode-html-preview"
+    },
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:html"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "html-preview.openPreview",
+                "title": "%html-preview.openPreview.title%",
+                "icon": "$(open-preview)"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "html-preview.openPreview",
+                    "group": "navigation",
+                    "when": "resourceLangId == html"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.85.0",
+        "typescript": "^5.3.0"
+    }
+}
