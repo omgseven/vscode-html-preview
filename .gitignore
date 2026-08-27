@@ -1,0 +1,24 @@
+# Node.js dependencies
+node_modules/
+
+# TypeScript compiled output
+out/
+
+# Source maps
+*.map
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode settings (keep workspace settings, ignore user-specific)
+.vscode/settings.json
+
+# npm lockfile for packages (keep for reproducible installs)
+# package-lock.json
+
+# IDE/editor files
+*.swp
+*.swo
+*~
+*.sublime-workspace
