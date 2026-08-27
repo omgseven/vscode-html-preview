@@ -6,7 +6,7 @@ let currentPanel: vscode.WebviewPanel | undefined;
 let currentHtmlPath: string | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-    const disposable = vscode.commands.registerCommand('html-preview.openPreview', () => {
+    const disposable = vscode.commands.registerCommand('html-preview-plus.openPreview', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             vscode.window.showWarningMessage('No active editor found.');
