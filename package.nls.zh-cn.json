@@ -1,0 +1,5 @@
+{
+    "html-preview.displayName": "HTML 预览",
+    "html-preview.description": "在 VS Code 中预览本地 HTML 文件",
+    "html-preview.openPreview.title": "打开预览"
+}
