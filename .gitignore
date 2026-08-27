@@ -11,6 +11,9 @@ out/
 .DS_Store
 Thumbs.db
 
+# VSIX package output
+*.vsix
+
 # VSCode settings (keep workspace settings, ignore user-specific)
 .vscode/settings.json
 
