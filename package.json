@@ -1,7 +1,7 @@
 {
-    "name": "html-preview",
-    "displayName": "%html-preview.displayName%",
-    "description": "%html-preview.description%",
+    "name": "html-preview-plus",
+    "displayName": "%html-preview-plus.displayName%",
+    "description": "%html-preview-plus.description%",
     "version": "0.0.1",
     "publisher": "sevenid",
     "repository": {
@@ -21,15 +21,15 @@
     "contributes": {
         "commands": [
             {
-                "command": "html-preview.openPreview",
-                "title": "%html-preview.openPreview.title%",
+                "command": "html-preview-plus.openPreview",
+                "title": "%html-preview-plus.openPreview.title%",
                 "icon": "$(open-preview)"
             }
         ],
         "menus": {
             "editor/title": [
                 {
-                    "command": "html-preview.openPreview",
+                    "command": "html-preview-plus.openPreview",
                     "group": "navigation",
                     "when": "resourceLangId == html"
                 }
