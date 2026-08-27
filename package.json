@@ -1,8 +1,8 @@
 {
     "name": "html-preview-plus",
-    "displayName": "%html-preview-plus.displayName%",
-    "description": "%html-preview-plus.description%",
-    "version": "0.0.1",
+    "displayName": "HTML Preview Plus",
+    "description": "Preview local HTML files in VS Code",
+    "version": "0.0.2",
     "publisher": "sevenid",
     "repository": {
         "type": "git",
