@@ -10,13 +10,14 @@ Preview local HTML files in VS Code.
 - Click the button to open a preview tab alongside the editor
 - Loads local CSS, JavaScript, images and other resources from the same directory
 - Click `http/https` links in the preview to open them in your default browser
-- Auto-refresh the preview when the HTML file is saved
+- Auto-refresh the preview when the HTML file or its resources change (external edits included) — debounced, and only while the preview is visible
 
 ## Usage
 
 1. Open any `.html` file
 2. Click the preview button (eye icon) in the top-right corner of the editor
 3. The preview panel opens on the right side
+4. Click the refresh button (circular arrow icon) on the preview tab's title bar to reload it manually
 
 ## Installation
 
