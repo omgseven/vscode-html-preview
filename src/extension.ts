@@ -5,6 +5,15 @@ import * as fs from 'fs';
 let currentPanel: vscode.WebviewPanel | undefined;
 let currentHtmlPath: string | undefined;
 
+// Auto-refresh infrastructure: the preview refreshes lazily (only while it is
+// visible) and is debounced to coalesce bursts of file changes.
+const REFRESH_DEBOUNCE_MS = 300;
+const WATCH_GLOB = '**/*.{html,htm,css,js,mjs,json,map,png,jpg,jpeg,gif,webp,svg,ico,woff,woff2,ttf,eot,mp4,webm,mp3,wav,ogg}';
+let sourceWatcher: vscode.FileSystemWatcher | undefined;
+let watchedDir: string | undefined;
+let refreshTimer: NodeJS.Timeout | undefined;
+let refreshPending = false;
+
 export function activate(context: vscode.ExtensionContext) {
     const disposable = vscode.commands.registerCommand('html-preview-plus.openPreview', () => {
         const editor = vscode.window.activeTextEditor;
@@ -22,7 +31,16 @@ export function activate(context: vscode.ExtensionContext) {
         openPreview(document.uri);
     });
 
-    context.subscriptions.push(disposable);
+    // Manual refresh entry points (command palette / webview refresh button)
+    const refreshDisposable = vscode.commands.registerCommand('html-preview-plus.refreshPreview', () => {
+        if (!currentPanel || !currentHtmlPath) {
+            vscode.window.showWarningMessage('No active preview. Open the preview first.');
+            return;
+        }
+        refreshPreviewNow();
+    });
+
+    context.subscriptions.push(disposable, refreshDisposable);
 }
 
 function openPreview(uri: vscode.Uri) {
@@ -34,6 +52,7 @@ function openPreview(uri: vscode.Uri) {
     if (currentPanel) {
         currentPanel.reveal(vscode.ViewColumn.Beside);
         updateWebviewContent(currentPanel, filePath);
+        updateSourceWatcher(fileDir);
         return;
     }
 
@@ -53,22 +72,28 @@ function openPreview(uri: vscode.Uri) {
     );
 
     updateWebviewContent(currentPanel, filePath);
+    updateSourceWatcher(fileDir);
 
-    currentPanel.onDidDispose(() => {
-        currentPanel = undefined;
-        currentHtmlPath = undefined;
-    });
-
-    // Auto-refresh preview when the HTML file is saved
+    // Auto-refresh when the HTML file is saved inside VS Code (the file
+    // watcher below also catches this, but the save event fires earlier)
     const saveListener = vscode.workspace.onDidSaveTextDocument((doc: vscode.TextDocument) => {
         if (currentPanel && currentHtmlPath && doc.uri.fsPath === currentHtmlPath) {
-            updateWebviewContent(currentPanel, currentHtmlPath);
+            onSourceChanged();
         }
     });
 
-    currentPanel.onDidDispose(() => {
-        saveListener.dispose();
+    // Lazy refresh: changes arriving while the preview is hidden only mark it
+    // dirty; a single refresh happens once the panel becomes visible again.
+    const viewStateListener = currentPanel.onDidChangeViewState((e: vscode.WebviewPanelOnDidChangeViewStateEvent) => {
+        if (e.webviewPanel.visible && refreshPending) {
+            refreshPending = false;
+            scheduleRefresh();
+        }
     });
+
+    // Refresh request from the refresh button on the preview tab's title bar
+    // (the button itself is contributed via editor/title menus with an
+    // activeWebviewPanelId condition, so no webview message channel is needed).
 
     // Track editor switch: if user switches to a different HTML file, update preview
     const changeEditorListener = vscode.window.onDidChangeActiveTextEditor((editor: vscode.TextEditor | undefined) => {
@@ -81,8 +106,85 @@ function openPreview(uri: vscode.Uri) {
     });
 
     currentPanel.onDidDispose(() => {
+        if (refreshTimer) {
+            clearTimeout(refreshTimer);
+            refreshTimer = undefined;
+        }
+        refreshPending = false;
+        disposeSourceWatcher();
+        saveListener.dispose();
+        viewStateListener.dispose();
         changeEditorListener.dispose();
+        currentPanel = undefined;
+        currentHtmlPath = undefined;
     });
+}
+
+/**
+ * Watch the previewed HTML file's directory for changes, including external
+ * edits. Any change to a web resource under the directory schedules a
+ * debounced, visibility-gated refresh.
+ */
+function updateSourceWatcher(dir: string) {
+    if (sourceWatcher && watchedDir === dir) {
+        return;
+    }
+    disposeSourceWatcher();
+    watchedDir = dir;
+    sourceWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(dir, WATCH_GLOB));
+    sourceWatcher.onDidChange(() => onSourceChanged());
+    sourceWatcher.onDidCreate(() => onSourceChanged());
+    // Deletions are ignored: removing a resource cannot be rendered anyway,
+    // and deleting the HTML itself would only surface a read error.
+}
+
+function disposeSourceWatcher() {
+    if (sourceWatcher) {
+        sourceWatcher.dispose();
+        sourceWatcher = undefined;
+    }
+    watchedDir = undefined;
+}
+
+/** Lazy refresh entry: skip while hidden (mark dirty), debounce while visible. */
+function onSourceChanged() {
+    if (!currentPanel || !currentHtmlPath) {
+        return;
+    }
+    if (!currentPanel.visible) {
+        refreshPending = true;
+        return;
+    }
+    scheduleRefresh();
+}
+
+/** Debounced refresh of the preview content. */
+function scheduleRefresh() {
+    if (!currentPanel || !currentHtmlPath) {
+        return;
+    }
+    if (refreshTimer) {
+        clearTimeout(refreshTimer);
+    }
+    refreshTimer = setTimeout(() => {
+        refreshTimer = undefined;
+        if (currentPanel && currentHtmlPath) {
+            updateWebviewContent(currentPanel, currentHtmlPath);
+        }
+    }, REFRESH_DEBOUNCE_MS);
+}
+
+/** Force an immediate refresh, cancelling any pending debounce/dirty state. */
+function refreshPreviewNow() {
+    if (!currentPanel || !currentHtmlPath) {
+        return;
+    }
+    if (refreshTimer) {
+        clearTimeout(refreshTimer);
+        refreshTimer = undefined;
+    }
+    refreshPending = false;
+    updateWebviewContent(currentPanel, currentHtmlPath);
 }
 
 function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
@@ -109,7 +211,7 @@ function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
             `">`,
         ].join('\n');
 
-        // Inject CSP into the HTML
+        // Inject CSP and helper scripts into the HTML
         const externalLinkScript = [
             '<script>',
             '(function(){',
@@ -125,14 +227,15 @@ function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
             '})();',
             '</script>',
         ].join('\n');
+        const uiInjection = `${csp}\n${externalLinkScript}`;
 
         if (/<head[^>]*>/i.test(htmlContent)) {
-            htmlContent = htmlContent.replace(/<head[^>]*>/i, (match: string) => `${match}\n${csp}\n${externalLinkScript}`);
+            htmlContent = htmlContent.replace(/<head[^>]*>/i, (match: string) => `${match}\n${uiInjection}`);
         } else if (/<html[^>]*>/i.test(htmlContent)) {
-            htmlContent = htmlContent.replace(/<html[^>]*>/i, (match: string) => `${match}\n<head>\n${csp}\n${externalLinkScript}\n</head>`);
+            htmlContent = htmlContent.replace(/<html[^>]*>/i, (match: string) => `${match}\n<head>\n${uiInjection}\n</head>`);
         } else {
             // HTML fragment, wrap into a full document
-            htmlContent = `<!DOCTYPE html>\n<html lang="en">\n<head>\n${csp}\n${externalLinkScript}\n<meta charset="utf-8">\n</head>\n<body>\n${htmlContent}\n</body>\n</html>`;
+            htmlContent = `<!DOCTYPE html>\n<html lang="en">\n<head>\n${uiInjection}\n<meta charset="utf-8">\n</head>\n<body>\n${htmlContent}\n</body>\n</html>`;
         }
 
         // Update panel title
