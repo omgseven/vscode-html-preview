@@ -2,6 +2,8 @@
 
 Preview local HTML files in VS Code.
 
+[![Marketplace](https://img.shields.io/visual-studio-marketplace/v/sevenid.html-preview-plus?color=blue&label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=sevenid.html-preview-plus)
+
 ![Screenshot](https://raw.githubusercontent.com/omgseven/resource/refs/heads/main/preview.jpg)
 
 ## Features
@@ -21,7 +23,7 @@ Preview local HTML files in VS Code.
 
 ## Installation
 
-Search "HTML Preview" in the VS Code extension marketplace.
+Search "HTML Preview" in the VS Code extension marketplace, or [open it directly](https://marketplace.visualstudio.com/items?itemName=sevenid.html-preview-plus).
 
 To run locally:
 
