@@ -197,16 +197,19 @@ function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
         // Rewrite local resource paths to webview URIs
         htmlContent = rewriteResourcePaths(htmlContent, baseDir, webview);
 
-        // Build a permissive Content Security Policy for the preview
+        // Build a permissive Content Security Policy for the preview. Remote
+        // http(s) sources are allowed so pages can load third-party libraries
+        // from CDNs (e.g. ECharts, jQuery) exactly as they would in a browser.
+        const remote = 'https: http:';
         const csp = [
             `<meta http-equiv="Content-Security-Policy" content="`,
             `default-src 'none';`,
-            `script-src 'unsafe-inline' 'unsafe-eval' ${webview.cspSource};`,
-            `style-src 'unsafe-inline' ${webview.cspSource};`,
-            `img-src ${webview.cspSource} data: blob: https: http:;`,
-            `font-src ${webview.cspSource} data:;`,
-            `connect-src ${webview.cspSource} https: http:;`,
-            `frame-src ${webview.cspSource} https: http:;`,
+            `script-src 'unsafe-inline' 'unsafe-eval' ${webview.cspSource} ${remote};`,
+            `style-src 'unsafe-inline' ${webview.cspSource} ${remote};`,
+            `img-src ${webview.cspSource} data: blob: ${remote};`,
+            `font-src ${webview.cspSource} data: ${remote};`,
+            `connect-src ${webview.cspSource} ${remote};`,
+            `frame-src ${webview.cspSource} ${remote};`,
             `media-src ${webview.cspSource} data: blob:;`,
             `">`,
         ].join('\n');
