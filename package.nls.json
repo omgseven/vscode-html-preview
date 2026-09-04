@@ -1,5 +1,6 @@
 {
     "html-preview-plus.displayName": "HTML Preview",
     "html-preview-plus.description": "Preview local HTML files in VS Code",
-    "html-preview-plus.openPreview.title": "Open Preview"
+    "html-preview-plus.openPreview.title": "Open Preview",
+    "html-preview-plus.refreshPreview.title": "Refresh Preview"
 }
