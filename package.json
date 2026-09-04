@@ -2,7 +2,7 @@
     "name": "html-preview-plus",
     "displayName": "HTML Preview Plus",
     "description": "Preview local HTML files in VS Code",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "sevenid",
     "repository": {
         "type": "git",
@@ -24,6 +24,11 @@
                 "command": "html-preview-plus.openPreview",
                 "title": "%html-preview-plus.openPreview.title%",
                 "icon": "$(open-preview)"
+            },
+            {
+                "command": "html-preview-plus.refreshPreview",
+                "title": "%html-preview-plus.refreshPreview.title%",
+                "icon": "$(refresh)"
             }
         ],
         "menus": {
@@ -32,6 +37,11 @@
                     "command": "html-preview-plus.openPreview",
                     "group": "navigation",
                     "when": "resourceLangId == html"
+                },
+                {
+                    "command": "html-preview-plus.refreshPreview",
+                    "group": "navigation",
+                    "when": "activeWebviewPanelId == htmlPreview"
                 }
             ]
         }
