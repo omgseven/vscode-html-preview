@@ -230,7 +230,57 @@ function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
             '})();',
             '</script>',
         ].join('\n');
-        const uiInjection = `${csp}\n${externalLinkScript}`;
+
+        // Auto-resize bridge: when the preview panel is resized (e.g. dragged
+        // wider), the page's window resize event may not fire reliably inside
+        // the webview. A ResizeObserver on <body> catches every layout width
+        // change instead, so ECharts charts re-layout to the new panel width.
+        // Instances are discovered in a single DOM scan and cached afterwards;
+        // every later pass only resizes the cached list (pruning detached or
+        // disposed instances), keeping the cost tiny even on large pages.
+        const autoResizeBridgeScript = [
+            '<script>',
+            '(function(){',
+            '  if (typeof ResizeObserver === "undefined") return;',
+            '  var charts = null; // null = not scanned yet; false = nothing to manage',
+            '  var timer = null;',
+            '  function collect() {',
+            '    var echarts = window.echarts;',
+            '    if (!echarts) { charts = false; return; }',
+            '    var found = [];',
+            '    var nodes = document.querySelectorAll("div");',
+            '    for (var i = 0; i < nodes.length; i++) {',
+            '      try {',
+            '        var c = echarts.getInstanceByDom(nodes[i]);',
+            '        if (c) found.push(c);',
+            '      } catch (err) { /* not an ECharts container */ }',
+            '    }',
+            '    charts = found.length ? found : false;',
+            '  }',
+            '  function relayout() {',
+            '    if (charts === null) collect();',
+            '    if (charts === false) return;',
+            '    var emptied = false;',
+            '    for (var i = charts.length - 1; i >= 0; i--) {',
+            '      try {',
+            '        var dom = charts[i].getDom();',
+            '        if (!dom || !dom.isConnected) { charts.splice(i, 1); emptied = true; continue; }',
+            '        charts[i].resize();',
+            '      } catch (err) { charts.splice(i, 1); emptied = true; }',
+            '    }',
+            '    if (emptied && charts.length === 0) charts = null; // rescan later',
+            '  }',
+            '  var observer = new ResizeObserver(function() {',
+            '    if (timer) return;',
+            '    timer = setTimeout(function() { timer = null; relayout(); }, 150);',
+            '  });',
+            '  function start() { if (document.body) observer.observe(document.body); }',
+            '  if (document.body) start();',
+            '  else document.addEventListener("DOMContentLoaded", start);',
+            '})();',
+            '</script>',
+        ].join('\n');
+        const uiInjection = `${csp}\n${externalLinkScript}\n${autoResizeBridgeScript}`;
 
         if (/<head[^>]*>/i.test(htmlContent)) {
             htmlContent = htmlContent.replace(/<head[^>]*>/i, (match: string) => `${match}\n${uiInjection}`);
