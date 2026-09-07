@@ -231,56 +231,43 @@ function updateWebviewContent(panel: vscode.WebviewPanel, htmlPath: string) {
             '</script>',
         ].join('\n');
 
-        // Auto-resize bridge: when the preview panel is resized (e.g. dragged
-        // wider), the page's window resize event may not fire reliably inside
-        // the webview. A ResizeObserver on <body> catches every layout width
-        // change instead, so ECharts charts re-layout to the new panel width.
-        // Instances are discovered in a single DOM scan and cached afterwards;
-        // every later pass only resizes the cached list (pruning detached or
-        // disposed instances), keeping the cost tiny even on large pages.
-        const autoResizeBridgeScript = [
+        // Resize relay: when the preview panel is resized (e.g. dragged wider)
+        // the page's window resize event may not fire reliably inside the
+        // webview, so page code that adapts to its container by listening on
+        // window resize (chart libraries, responsive layouts) never re-layouts.
+        // A ResizeObserver on <html> catches every real viewport size change;
+        // when the size actually changed we re-dispatch a synthetic resize
+        // event, so pages behave exactly as they would in a browser — no
+        // library-specific handling needed here. The debounce coalesces drag
+        // bursts, and the size check both suppresses the observer's initial
+        // callback and guards against relay loops.
+        const resizeRelayScript = [
             '<script>',
             '(function(){',
             '  if (typeof ResizeObserver === "undefined") return;',
-            '  var charts = null; // null = not scanned yet; false = nothing to manage',
-            '  var timer = null;',
-            '  function collect() {',
-            '    var echarts = window.echarts;',
-            '    if (!echarts) { charts = false; return; }',
-            '    var found = [];',
-            '    var nodes = document.querySelectorAll("div");',
-            '    for (var i = 0; i < nodes.length; i++) {',
-            '      try {',
-            '        var c = echarts.getInstanceByDom(nodes[i]);',
-            '        if (c) found.push(c);',
-            '      } catch (err) { /* not an ECharts container */ }',
-            '    }',
-            '    charts = found.length ? found : false;',
-            '  }',
-            '  function relayout() {',
-            '    if (charts === null) collect();',
-            '    if (charts === false) return;',
-            '    var emptied = false;',
-            '    for (var i = charts.length - 1; i >= 0; i--) {',
-            '      try {',
-            '        var dom = charts[i].getDom();',
-            '        if (!dom || !dom.isConnected) { charts.splice(i, 1); emptied = true; continue; }',
-            '        charts[i].resize();',
-            '      } catch (err) { charts.splice(i, 1); emptied = true; }',
-            '    }',
-            '    if (emptied && charts.length === 0) charts = null; // rescan later',
+            '  var lastW = -1, lastH = -1, timer = null;',
+            '  function relay() {',
+            '    var w = document.documentElement.clientWidth;',
+            '    var h = document.documentElement.clientHeight;',
+            '    if (w === lastW && h === lastH) return;',
+            '    lastW = w; lastH = h;',
+            '    window.dispatchEvent(new Event("resize"));',
             '  }',
             '  var observer = new ResizeObserver(function() {',
             '    if (timer) return;',
-            '    timer = setTimeout(function() { timer = null; relayout(); }, 150);',
+            '    timer = setTimeout(function() { timer = null; relay(); }, 100);',
             '  });',
-            '  function start() { if (document.body) observer.observe(document.body); }',
-            '  if (document.body) start();',
+            '  function start() {',
+            '    var el = document.documentElement;',
+            '    lastW = el.clientWidth; lastH = el.clientHeight;',
+            '    observer.observe(el);',
+            '  }',
+            '  if (document.documentElement) start();',
             '  else document.addEventListener("DOMContentLoaded", start);',
             '})();',
             '</script>',
         ].join('\n');
-        const uiInjection = `${csp}\n${externalLinkScript}\n${autoResizeBridgeScript}`;
+        const uiInjection = `${csp}\n${externalLinkScript}\n${resizeRelayScript}`;
 
         if (/<head[^>]*>/i.test(htmlContent)) {
             htmlContent = htmlContent.replace(/<head[^>]*>/i, (match: string) => `${match}\n${uiInjection}`);
