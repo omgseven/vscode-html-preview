@@ -3,7 +3,7 @@
     "displayName": "HTML Preview Plus",
     "description": "Preview local HTML files in VS Code",
     "icon": "icon.png",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "publisher": "sevenid",
     "license": "MIT",
     "repository": {
