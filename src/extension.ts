@@ -40,7 +40,27 @@ export function activate(context: vscode.ExtensionContext) {
         refreshPreviewNow();
     });
 
-    context.subscriptions.push(disposable, refreshDisposable);
+    // Open an HTML file in the system default browser. The button is shown
+    // both on HTML source tabs (editor/title, resourceLangId == html) and on
+    // the preview tab (activeWebviewPanelId == htmlPreview). Prefer the
+    // active HTML editor as the target (source-tab clicks, and the usual
+    // side-by-side flow where the editor shows the same file as the preview);
+    // fall back to the previewed file when no HTML editor is active.
+    const openInBrowserDisposable = vscode.commands.registerCommand('html-preview-plus.openInBrowser', async () => {
+        const editor = vscode.window.activeTextEditor;
+        const sourcePath = editor && editor.document.languageId === 'html' ? editor.document.uri.fsPath : undefined;
+        const target = sourcePath || (currentPanel && currentHtmlPath ? currentHtmlPath : undefined);
+        if (!target) {
+            vscode.window.showWarningMessage('No HTML file to open. Open an HTML file or the preview first.');
+            return;
+        }
+        const opened = await vscode.env.openExternal(vscode.Uri.file(target));
+        if (!opened) {
+            vscode.window.showErrorMessage('Failed to open the file in the default browser.');
+        }
+    });
+
+    context.subscriptions.push(disposable, refreshDisposable, openInBrowserDisposable);
 }
 
 function openPreview(uri: vscode.Uri) {

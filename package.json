@@ -31,6 +31,11 @@
                 "command": "html-preview-plus.refreshPreview",
                 "title": "%html-preview-plus.refreshPreview.title%",
                 "icon": "$(refresh)"
+            },
+            {
+                "command": "html-preview-plus.openInBrowser",
+                "title": "%html-preview-plus.openInBrowser.title%",
+                "icon": "$(globe)"
             }
         ],
         "menus": {
@@ -41,7 +46,17 @@
                     "when": "resourceLangId == html"
                 },
                 {
+                    "command": "html-preview-plus.openInBrowser",
+                    "group": "navigation",
+                    "when": "resourceLangId == html"
+                },
+                {
                     "command": "html-preview-plus.refreshPreview",
+                    "group": "navigation",
+                    "when": "activeWebviewPanelId == htmlPreview"
+                },
+                {
+                    "command": "html-preview-plus.openInBrowser",
                     "group": "navigation",
                     "when": "activeWebviewPanelId == htmlPreview"
                 }

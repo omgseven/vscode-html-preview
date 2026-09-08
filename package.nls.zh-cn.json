@@ -2,5 +2,6 @@
     "html-preview-plus.displayName": "HTML 预览",
     "html-preview-plus.description": "在 VS Code 中预览本地 HTML 文件",
     "html-preview-plus.openPreview.title": "打开预览",
-    "html-preview-plus.refreshPreview.title": "刷新预览"
+    "html-preview-plus.refreshPreview.title": "刷新预览",
+    "html-preview-plus.openInBrowser.title": "在浏览器中打开"
 }
